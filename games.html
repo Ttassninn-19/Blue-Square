@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Improved game for beginners</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-area {
+            width: 90vw;
+            height: 70vh;
+            max-width: 400px;
+            max-height: 400px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        #player {
+            width: 40px;
+            height: 40px;
+            background-color: blue;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(0, 0, 255, 0.5);
+        }
+        .obstacle {
+            width: 30px;
+            height: 30px;
+            background-color: red;
+            border-radius: 4px;
+            position: absolute;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+        #score {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+            width: 150px;
+            height: 150px;
+        }
+        .control-btn {
+            background-color: #ddd;
+            border: none;
+            border-radius: 5px;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: manipulation;
+        }
+        .control-btn:active {
+            background-color: #bbb;
+        }
+        #up-btn {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        #left-btn {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        #right-btn {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        #down-btn {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        @media (max-width: 500px) {
+            #game-area {
+                width: 95vw;
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>improved game</h1>
+        <div id="score">check: 0</div>
+        <div id="game-area">
+            <div id="player"></div>
+        </div>
+        
+        <div id="controls">
+            <button id="up-btn" class="control-btn">↑</button>
+            <button id="left-btn" class="control-btn">←</button>
+            <button id="right-btn" class="control-btn">→</button>
+            <button id="down-btn" class="control-btn">↓</button>
+        </div>
+    </div>
+
+    <script>
+        const player = document.getElementById('player');
+        const gameArea = document.getElementById('game-area');
+        const scoreElement = document.getElementById('score');
+        const gameAreaRect = gameArea.getBoundingClientRect();
+        
+        let score = 0;
+        let playerX = gameArea.offsetWidth / 2 - player.offsetWidth / 2;
+        let playerY = gameArea.offsetHeight / 2 - player.offsetHeight / 2;
+        const playerSpeed = 8;
+        let gameWidth = gameArea.offsetWidth;
+        let gameHeight = gameArea.offsetHeight;
+        let obstacles = [];
+        let gameRunning = true;
+        
+        // Инициализация игрока
+        player.style.left = playerX + 'px';
+        player.style.top = playerY + 'px';
+        
+        // Обработчик изменения размера окна
+        window.addEventListener('resize', () => {
+            gameWidth = gameArea.offsetWidth;
+            gameHeight = gameArea.offsetHeight;
+        });
+        
+        // Управление с клавиатуры
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    playerX = Math.max(0, playerX - playerSpeed);
+                    break;
+                case 'ArrowRight':
+                    playerX = Math.min(gameWidth - player.offsetWidth, playerX + playerSpeed);
+                    break;
+                case 'ArrowUp':
+                    playerY = Math.max(0, playerY - playerSpeed);
+                    break;
+                case 'ArrowDown':
+                    playerY = Math.min(gameHeight - player.offsetHeight, playerY + playerSpeed);
+                    break;
+            }
+            
+            updatePlayerPosition();
+        });
+        
+        // Управление с кнопок на экране
+        const setupButtonControl = (btnId, direction) => {
+            const btn = document.getElementById(btnId);
+            let intervalId = null;
+            
+            const startMove = () => {
+                if (intervalId) return;
+                
+                intervalId = setInterval(() => {
+                    if (!gameRunning) return;
+                    
+                    switch(direction) {
+                        case 'left':
+                            playerX = Math.max(0, playerX - playerSpeed);
+                            break;
+                        case 'right':
+                            playerX = Math.min(gameWidth - player.offsetWidth, playerX + playerSpeed);
+                            break;
+                        case 'up':
+                            playerY = Math.max(0, playerY - playerSpeed);
+                            break;
+                        case 'down':
+                            playerY = Math.min(gameHeight - player.offsetHeight, playerY + playerSpeed);
+                            break;
+                    }
+                    
+                    updatePlayerPosition();
+                }, 16);
+            };
+            
+            const stopMove = () => {
+                if (intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+            };
+            
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startMove();
+            });
+            
+            btn.addEventListener('touchend', stopMove);
+            btn.addEventListener('touchcancel', stopMove);
+            
+            btn.addEventListener('mousedown', startMove);
+            btn.addEventListener('mouseup', stopMove);
+            btn.addEventListener('mouseleave', stopMove);
+        };
+        
+        setupButtonControl('left-btn', 'left');
+        setupButtonControl('right-btn', 'right');
+        setupButtonControl('up-btn', 'up');
+        setupButtonControl('down-btn', 'down');
+        
+        // Обновление позиции игрока
+        function updatePlayerPosition() {
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+        }
+        
+        // Создание препятствий
+        function createObstacle() {
+            if (!gameRunning) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            // Случайное появление с краев экрана
+            const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+            let obstacleX, obstacleY;
+            
+            switch(side) {
+                case 0: // top
+                    obstacleX = Math.random() * (gameWidth - 30);
+                    obstacleY = -30;
+                    break;
+                case 1: // right
+                    obstacleX = gameWidth;
+                    obstacleY = Math.random() * (gameHeight - 30);
+                    break;
+                case 2: // bottom
+                    obstacleX = Math.random() * (gameWidth - 30);
+                    obstacleY = gameHeight;
+                    break;
+                case 3: // left
+                    obstacleX = -30;
+                    obstacleY = Math.random() * (gameHeight - 30);
+                    break;
+            }
+            
+            obstacle.style.left = obstacleX + 'px';
+            obstacle.style.top = obstacleY + 'px';
+            gameArea.appendChild(obstacle);
+            
+            const obstacleObj = {
+                element: obstacle,
+                x: obstacleX,
+                y: obstacleY,
+                speedX: (playerX + player.offsetWidth/2 - obstacleX - 15) / 100 * (1 + score/20),
+                speedY: (playerY + player.offsetHeight/2 - obstacleY - 15) / 100 * (1 + score/20)
+            };
+            
+            obstacles.push(obstacleObj);
+        }
+        
+        // Обновление игры
+        function gameUpdate() {
+            if (!gameRunning) return;
+            
+            // Движение препятствий
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                
+                obs.x += obs.speedX;
+                obs.y += obs.speedY;
+                
+                obs.element.style.left = obs.x + 'px';
+                obs.element.style.top = obs.y + 'px';
+                
+                // Проверка столкновения
+                if (obs.x < playerX + player.offsetWidth &&
+                    obs.x + 30 > playerX &&
+                    obs.y < playerY + player.offsetHeight &&
+                    obs.y + 30 > playerY) {
+                    endGame();
+                    return;
+                }
+                
+                // Удаление препятствий за пределами экрана с запасом
+                if (obs.x < -50 || obs.x > gameWidth + 50 || 
+                    obs.y < -50 || obs.y > gameHeight + 50) {
+                    gameArea.removeChild(obs.element);
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreElement.textContent = 'Счет: ' + score;
+                }
+            }
+            
+            requestAnimationFrame(gameUpdate);
+        }
+        
+        // Конец игры
+        function endGame() {
+            gameRunning = false;
+            player.style.backgroundColor = 'darkred';
+            
+            // Остановить все препятствия
+            obstacles.forEach(obs => {
+                if (obs.element.parentNode) {
+                    obs.element.style.backgroundColor = 'darkred';
+                }
+            });
+            
+            setTimeout(() => {
+                alert('Игра окончена! Ваш счет: ' + score);
+                resetGame();
+            }, 100);
+        }
+        
+        // Сброс игры
+        function resetGame() {
+            // Удалить все препятствия
+            obstacles.forEach(obs => {
+                if (obs.element.parentNode) {
+                    gameArea.removeChild(obs.element);
+                }
+            });
+            
+            obstacles = [];
+            score = 0;
+            scoreElement.textContent = 'Счет: ' + score;
+            playerX = gameWidth / 2 - player.offsetWidth / 2;
+            playerY = gameHeight / 2 - player.offsetHeight / 2;
+            player.style.backgroundColor = 'blue';
+            updatePlayerPosition();
+            gameRunning = true;
+            gameUpdate();
+        }
+        
+        // Запуск игры
+        setInterval(createObstacle, 1500 - Math.min(1000, score * 10)); // Увеличиваем частоту с ростом счета
+        gameUpdate();
+        
+        // Предотвращение скролла на мобильных устройствах при касании
+        document.addEventListener('touchmove', (e) => {
+            if (e.target.className.includes('control-btn')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
